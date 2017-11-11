@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<!-- https://github.com/jeromeetienne/AR.js/blob/master/three.js/examples/magic-book/magic-book.html -->
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<!-- three.js library -->
+<script src='./js/three.js'></script>
+<script src="./js/artoolkit.min.js"></script>
+<script src="./js/artoolkit.api.js"></script>
+<!-- arjs three libraries -->
+<script src='./js/threex-arbasecontrols.js'></script>
+<script src='./js/threex-artoolkitsource.js'></script>
+<script src='./js/threex-artoolkitcontext.js'></script>
+<script src='./js/threex-artoolkitprofile.js'></script>
+<script src='./js/threex-armarkercontrols.js'></script>
+<script src="./js/Tween.js"></script>
+<script>THREEx.ArToolkitContext.baseURL = './'</script>
+
+
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
+    <div id="score"
+    style='color: red;
+    font-size: 40px;
+    font-weight: bold;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    width:100%;
+    text-align: right;
+    text-shadow: 0 0 4px rgba(255,255,255,0.4);
+    z-index:1;'>0</div>
+<script>
+    /* --------
+        init
+    -------- */
+    var renderer = new THREE.WebGLRenderer({
+        // antialias: true,
+        alpha: true
+    });
+    renderer.setClearColor(new THREE.Color('lightgrey'), 0);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    renderer.domElement.style.position = 'absolute';
+	renderer.domElement.style.top = '0px';
+	renderer.domElement.style.left = '0px';
+	document.body.appendChild( renderer.domElement );
+    
+    // array of functions for rendering loop
+    var onRenderFcts = [];
+    
+    // init scene
+    var scene = new THREE.Scene();
+    
+    var ambient = new THREE.AmbientLight(0x666666);
+    scene.add(ambient);
+    
+    var directionalLight = new THREE.DirectionalLight(0x887766);
+    directionalLight.position.set(-1, 1, 1).normalize();
+    scene.add(directionalLight);
+    
+    // set up raycaster for clicking
+    var raycaster = new THREE.Raycaster(),
+        mouse = new THREE.Vector2();
+        
+    raycaster.params.Points.threshold = 0.1;
+    
+    // init camera
+    var camera = new THREE.PerspectiveCamera(42, renderer.domElement.width / renderer.domElement.height, 0.01, 100);
+    scene.add(camera);
+    
+    /* --------------------------------------------
+                set up artoolkitsource
+    ---------------------------------------------*/
+    var arToolkitSource = new THREEx.ArToolkitSource({
+        sourceType: 'webcam'
+    });
+    
+    arToolkitSource.init(function onReady(){
+        //arToolkitSource.onResize([renderer.domElement, arToolkitContext.arController.canvas]);
+        arToolkitSource.onResizeElement();
+    });
+    
+    // for window resizing
+    window.addEventListener('resize', function(){
+        //arToolkitSource.onResize([renderer.domElement, arToolkitContext.arController.canvas]);
+        arToolkitSource.onResizeElement();
+    });
+    /* --------------------------------------------
+                set up toolkit context
+    ---------------------------------------------*/
+    var arToolkitContext = new THREEx.ArToolkitContext({
+        cameraParametersUrl: THREEx.ArToolkitContext.baseURL + '/data/camera_para.dat',
+        detectionMode: 'mono'
+    });
+    arToolkitContext.init(function onCompleted(){
+        camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+    });
+    // update artoolkit on every frame
+    onRenderFcts.push(function(){
+        if(arToolkitSource.ready === false) return;
+        arToolkitContext.update(arToolkitSource.domElement);
+    });
+    /* --------------------------------------------
+                set up marker controls
+    ---------------------------------------------*/
+    var markerRoot = new THREE.Group;
+    scene.add(markerRoot);
+    var markerControls = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+        type: 'pattern',
+        patternUrl: THREEx.ArToolkitContext.baseURL + './data/patt.hiro'
+    });
+    
+    /* --------------------------------------------
+        form duck template and load assets
+    ---------------------------------------------*/
+    var geometry = new THREE.PlaneGeometry(0.7,0.7, 0);
+    // load assets and textures
+    var ass_rFlapUp = new THREE.TextureLoader().load('./assets/duck-up-right.png');
+    var ass_lFlapUp = new THREE.TextureLoader().load('./assets/duck-up-left.png');
+    var ass_rFlapDown = new THREE.TextureLoader().load('./assets/duck-down-right.png');
+    var ass_lFlapDown = new THREE.TextureLoader().load('./assets/duck-down-left.png');
+    var ass_duckHit = new THREE.TextureLoader().load('./assets/duck-hit.png');
+    var ass_duckFall = new THREE.TextureLoader().load('./assets/duck-fall.png');
+    // set up materials
+    var mat_rFlapUp = new THREE.MeshBasicMaterial({map: ass_rFlapUp});
+    var mat_lFlapUp = new THREE.MeshBasicMaterial({map: ass_lFlapUp});
+    var mat_rFlapDown = new THREE.MeshBasicMaterial({map: ass_rFlapDown});
+    var mat_lFlapDown = new THREE.MeshBasicMaterial({map: ass_lFlapDown});
+    var mat_duckHit = new THREE.MeshBasicMaterial({map: ass_duckHit});
+    var mat_duckFall = new THREE.MeshBasicMaterial({map: ass_duckFall});
+    // set animation template
+    var duration = 9000;
+    
+    /* ------------------------------------------
+                Generate Ducks
+    ------------------------------------------ */
+    duckGenerator();
+    
+    function duckGenerator(){
+        // 1 is right; 0 left
+        var direction = Math.round(Math.random()),
+            timeForNextDuck = Math.round(500 + (2500 * Math.random()));
+        
+        generateDuck(direction);
+        
+        setTimeout(function(){
+            duckGenerator();
+        }, timeForNextDuck);
+    }
+    
+    function generateDuck(direction){
+        var startMat = direction ? mat_rFlapUp : mat_lFlapUp,
+            duckName = Math.round(1000 * Math.random());
+
+        var duck = new THREE.Mesh(geometry, startMat);
+
+        duck.position.x = 0;
+        duck.position.y = 0;
+        duck.position.z = 0.1;
+        duck.name = duckName;
+        
+        console.log(markerRoot);
+        
+        markerRoot.add(duck);
+        
+        fly(duck, direction);
+    }
+    
+    function fly(duck, direction){
+        var mat_flapUp = direction ? mat_rFlapUp : mat_lFlapUp,
+            mat_flapDown = direction ? mat_rFlapDown : mat_lFlapDown;
+                            
+        function flap(){
+            if(duck.material == mat_flapUp) {
+                duck.material = mat_flapDown;
+            } else if(duck.material == mat_flapDown) {
+                duck.material = mat_flapUp;
+            } else {
+                return false;
+            }
+            
+            setTimeout(function(){
+                flap();
+            }, 200);
+        }
+        
+        flap();
+        
+        // move duck across scene in flight
+        flightAnimation(direction, duck);
+        
+        // timer to stop function when animation ends
+        setTimeout(function(){
+            markerRoot.remove(duck);
+        }, duration);
+    }
+    
+    function flightAnimation(direction, duck){
+        // using Tween
+        // https://github.com/sole/tween.js
+        var xTarget = direction ? Math.round(9 + (5 * Math.random())) : Math.round(-9 + (-5 * Math.random())),
+            yTarget = Math.round(9 + (5 * Math.random()));
+        var position = {x: duck.position.x, y: duck.position.y},
+            target = {
+                x: xTarget,
+                y: yTarget};
+        var tween = new TWEEN.Tween(position)
+            .to(target, duration)
+            .onUpdate(function(){
+                duck.position.x = this.x;
+                duck.position.y = this.y;
+            })
+            .start();
+        
+        duck.tweenAnimation = tween;
+                
+        requestAnimationFrame(animate);
+    
+        function animate(time) {
+        	requestAnimationFrame(animate);
+        	TWEEN.update(time);
+        }
+    }
+        
+    /* ------------------------------------------
+                Shoot Ducks
+    ------------------------------------------ */
+    var el_score = document.getElementById('score');
+    var score = 0;
+    // interaction
+    window.addEventListener( 'click', onTouch, false );
+    
+    function onTouch(event){
+        event.preventDefault();
+        
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    	mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        mouse.z = 0.5;
+        
+        raycaster.setFromCamera(mouse, camera);
+        
+        var intersects = raycaster.intersectObjects(markerRoot.children);
+        // only allow one duck shot per click
+        var intersect = (intersects.length) > 0 ? intersects[0] : null;
+        
+        if(intersect !== null){
+            shootDuck(intersect.object);
+            
+            if(!score) {
+                el_score.style.color = "#24c13c";
+            }
+            score ++;
+            el_score.innerHTML = score;
+        }
+    }
+    
+    // behavior
+    function shootDuck(duck){
+        // make duck inactive and begin shot duck animation
+        if(duck.tweenAnimation) {
+            duck.tweenAnimation.stop();
+                        
+            duck.material = mat_duckHit;
+            
+            setTimeout(function(){
+                dropDuck(duck);
+            }, 1000);
+        }
+    }
+    
+    function dropDuck(duck) {
+        duck.material = mat_duckFall;
+        var position = {x: duck.position.x, y: duck.position.y},
+            target = {
+                x: duck.position.x,
+                y: -40};
+        var tween = new TWEEN.Tween(position)
+            .to(target, duration)
+            .onUpdate(function(){
+                duck.position.x = this.x;
+                duck.position.y = this.y;
+            })
+            .start();
+                            
+        requestAnimationFrame(animate);
+    
+        function animate(time) {
+        	requestAnimationFrame(animate);
+        	TWEEN.update(time);
+        }
+    }
+    
+    /* ------------------------------------------
+                        Render
+    ------------------------------------------ */
+    // Render all
+    onRenderFcts.push(function(){
+        renderer.render(scene, camera);
+    });
+    
+    // run rendering loop
+    var lastTimeMsec = null;
+    requestAnimationFrame(function animate(nowMsec){
+        requestAnimationFrame(animate);
+        lastTimeMsec = lastTimeMsec || nowMsec-1000/60;
+        var deltaMsec = Math.min(200, nowMsec - lastTimeMsec);
+        lastTimeMsec = nowMsec;
+        
+        onRenderFcts.forEach(function(onRenderFct){
+            onRenderFct(deltaMsec/1000, nowMsec/1000);
+        })
+    });
+</script>
+</body>
