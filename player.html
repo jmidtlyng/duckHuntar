@@ -151,10 +151,15 @@
             duckName = Math.round(1000 * Math.random());
 
         var duck = new THREE.Mesh(geometry, startMat);
-
+	/*
         duck.position.x = 0;
         duck.position.y = 0;
         duck.position.z = 0.1;
+	*/
+	duck.position.x = markerRoot.position.x;
+        duck.position.y = markerRoot.postion.y;
+        duck.position.z = markerRoot.position.z + 0.1;
+	    
         duck.name = duckName;
                 
         scene.add(duck);
