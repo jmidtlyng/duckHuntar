@@ -1,6 +1,6 @@
 # Duck HuntAR
 
-Really fun project all thanks to [AR.js by Jerome Etienne](https://github.com/jeromeetienne/AR.js/blob/master/README.md)
+Thanks to [AR.js by Jerome Etienne](https://github.com/jeromeetienne/AR.js/blob/master/README.md)
 
 Built using three.js libs from Jerome Etienne, but also the only AR.js example I've seen
 using (albiet inconsistent) touch interaction with a three.js raycaster.
