@@ -7,8 +7,8 @@ using (albiet inconsistent) touch interaction with a three.js raycaster.
 
 Retro Nintendo ducks fly out of a marker discovered by your webcam. On click/touch, they're hit.
 
-Sometimes the webcam will lose the marker. Currently testing fixes, but my interim resolution is
-to jiggle the webcam a bit to blur things. Somehow this helps pick up the marker.
+If the webcam will loses the marker, ducks fly out of the last detected point. It was either
+this or hide the ducks entirely when the marker disappears. Please comment if you have suggestions.
 
 It seems like head-shots work consistently, where body shots only hit slow ducks. Fast ducks
 require leading. It would be fun to dig into this and work it out, but I'm fairly satisfied
