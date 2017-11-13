@@ -240,7 +240,8 @@
         
         raycaster.setFromCamera(mouse, camera);
         
-        var intersects = raycaster.intersectObjects(markerRoot.children);
+        var intersects = raycaster.intersectObjects(scene.children);
+	    
         // only allow one duck shot per click
         var intersect = (intersects.length) > 0 ? intersects[0] : null;
         
