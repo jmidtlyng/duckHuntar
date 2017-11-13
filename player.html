@@ -156,10 +156,8 @@
         duck.position.y = 0;
         duck.position.z = 0.1;
         duck.name = duckName;
-        
-        console.log(markerRoot);
-        
-        markerRoot.add(duck);
+                
+        scene.add(duck);
         
         fly(duck, direction);
     }
@@ -189,7 +187,7 @@
         
         // timer to stop function when animation ends
         setTimeout(function(){
-            markerRoot.remove(duck);
+            scene.remove(duck);
         }, duration);
     }
     
